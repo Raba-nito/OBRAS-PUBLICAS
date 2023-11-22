@@ -1,4 +1,3 @@
-
 import pandas as pd
 from modelo_orm import *
 from abc import ABC
@@ -10,8 +9,6 @@ class GestionarObra(ABC):
 
     @classmethod
     def extraer_datos(cls):
-        #que debe incluir las sentencias necesarias para manipular el dataset a
-        #través de un objeto Dataframe del módulo “pandas”.
         """CSV de Obras Publicas"""
     
         archivo_csv = "gonzalo_costas/observatorio-de-obras-urbanas.csv"
@@ -25,24 +22,14 @@ class GestionarObra(ABC):
 
     @classmethod
     def limpiar_datos(cls):
-        #que debe incluir las sentencias necesarias para realizar la “limpieza” de
-        #los datos nulos y no accesibles del Dataframe.
-        #(Pandas elimina filas sólo con valores NaN para una columna en particular 
-        #usando el método DataFrame.dropna())
         cls.extraer_datos()
-        cls.df.dropna(subset=['entorno', 'financiamiento'],axis = 0, inplace = True)
+        cls.df.dropna(subset=['entorno', 'nombre','etapa', 'tipo', 'comuna', 'direccion','licitacion_oferta_empresa', 'licitacion_anio', 'estudio_ambiental_descarga'],axis = 0, inplace = True)
         data_unique_entorno= list(cls.df['entorno'].unique())
-    
-        print(cls.df.head())
-        print(cls.df.count())
-        print(cls.df.columns)
         
         cls.df_limpio = data_unique_entorno
 
     @classmethod
     def conectar_db(cls):
-        #que debe incluir las sentencias necesarias para realizar la conexión a la
-        #base de datos “obras_urbanas.db”.
         try:
             print('base de datos conectada')
             cls.db = db.connect()
@@ -50,20 +37,12 @@ class GestionarObra(ABC):
             print("Error al conectar con la BD.", e)
             exit()
         
+    @classmethod
+    def mapear_orm(cls):
+        db.create_tables([TipoEntorno,ObrasPublicas, Etapas, TipoContratacion, Empresa])
 
-    #def mapear_orm():
-        #que debe incluir las sentencias necesarias para realizar la creación de la
-        #estructura de la base de datos (tablas y relaciones) utilizando el método de instancia
-        #“create_tables(list)” del módulo peewee.
-    
     @classmethod
     def cargar_datos(cls):
-        #que debe incluir las sentencias necesarias para persistir los datos de las
-        #obras (ya transformados y “limpios”) que contiene el objeto Dataframe en la base de datos
-        #relacional SQLite. Para ello se debe utilizar el método de clase Model create() en cada una
-        #de las clase del modelo ORM definido.
-
-
         for elem in cls.df_limpio:
             print("Elemento:", elem)
             try:
@@ -72,26 +51,91 @@ class GestionarObra(ABC):
                 print("Error al insertar un nuevo registro en la tabla tipo entorno", e)
         print("Se han persistido los tipos de transporte en la BD.")
 
-        print("Recorremos las filas del archivo csv e insertamos los valores en la tabla 'viajes' de la BD")
-        cls.extraer_datos()
+        print("Recorremos las filas del archivo csv e insertamos los valores en la tabla 'ObrasPublicas' de la BD")
+        
         for elem in cls.df.values:
-            tipo_entorn= TipoEntorno.get(TipoEntorno.nombre == elem[0])
+            tipo_entorn= TipoEntorno.get(TipoEntorno.nombre == elem[1])
             try:
-                IndentificacionObra.create(tipo_entorno=tipo_entorn,id_obra=elem[1], nombre=elem[2], etapa=elem[3], area_responsable = elem[4], descripcion=elem[5], monto_contrato=elem[6])
+                ObrasPublicas.create(tipo_entorno=tipo_entorn,id_obra=elem[1], 
+                                        nombre=elem[2], etapa=elem[3], tipo = elem[4], area_responsable = elem[5],
+                                        descripcion=elem[6], monto_contrato=elem[7],
+                                        comuna =elem[8], barrio =elem[9], direccion = elem[10],
+                                        latitud = elem[11],longitud = elem[12],
+                                        fecha_inicio = elem[13], fecha_fin_inicial = elem[14], plazo_meses = elem[15],
+                                        porcentaje_valance = elem[16],
+                                        imagen_1 = elem[17], imagen_2 = elem[18], imagen_3 = elem[19],imagen_4 = elem[20],
+                                        licitacion_oferta_empresa = elem[21],
+                                        licitacion_anio = elem[22],
+                                        contratacion_tipo = elem[23],
+                                        nro_contratacion = elem[24],
+                                        cuit_contratista = elem[25],
+                                        beneficiario = elem[26],
+                                        mano_obra = elem[27],
+                                        compromiso = elem[28],
+                                        expediente_numero = elem[29],
+                                        destacada = elem[30],
+                                        ba_elije = elem[31],
+                                        pliego_descarga = elem[32],
+                                        estudio_ambiental_descarga = elem[33],
+                                        financiamiento = elem[34]
+                                            )
             except IntegrityError as e:
                 print("Error al insertar un nuevo registro en la tabla viajes.", e)
 
-    #def nueva_obra():
-        #que debe incluir las sentencias necesarias para crear nuevas instancias de
-        #Obra. Se deben considerar los siguientes requisitos:
-        #• Todos los valores requeridos para la creación de estas nuevas instancias deben ser
-        #ingresados por teclado.
-        #• Para los valores correspondientes a registros de tablas relacionadas (foreign key), el
-        #valor ingresado debe buscarse en la tabla correspondiente mediante sentencia de
-        #búsqueda ORM, para obtener la instancia relacionada, si el valor ingresado no existe
-        #en la tabla, se le debe informar al usuario y solicitarle un nuevo ingreso por teclado.
-        #• Para persistir en la BD los datos de la nueva instancia de Obra debe usarse el método
-        #save() de Model del módulo peewee.
+
+    @classmethod
+    def nueva_obra(cls):
+        
+        etapa_proyecto = Etapas(etapa='Proyecto')
+        etapa_en_ejecucion = Etapas(etapa='En ejecucion')
+        etapa_finalizacion = Etapas(etapa='Finalizacion')
+
+        #nro_contratacion1 = TipoContratacion(nro_contratacion = 'Licitacion publica')
+        
+        nro_expediente_si = Empresa(nro_expediente = 'SI')
+        nro_expediente_no= Empresa(nro_expediente = 'NO')
+
+        try:
+            etapa_proyecto.save()
+            etapa_en_ejecucion.save()
+            etapa_finalizacion.save()
+        #    nro_contratacion1.save()
+            nro_expediente_si.save()
+            nro_expediente_no.save()
+        except IntegrityError as e:
+            print("Error al insertar en la tabla categories.", e)
+        
+        
+        opcion = 0
+        while opcion != 2:
+            print("La etapa de la obra debe ser 'FINALIZACION','EN EJECUCION', 'PROYECTO'")
+
+
+            etapas = input("Ingrese la etapa de la obra: ")
+            try:
+                Etapas.get(Etapas.etapa == etapas)
+            except DoesNotExist as e:
+                print("Error al ingresar dato nulo")
+                continue
+   
+            tipoObra = input("Ingrese su tipo de obra: ")
+            areaResponsable = input("Ingrese el area responsable de la obra: ")
+            barrio = input("Ingrese el barrio donde pertenece la obra: ")
+            empresa = input("Ingrese la empresa que desea registrar: ")
+            nro_expediente = input("Ingrese SI/NO para el expediente: ")
+            try:
+                Empresa.get(Empresa.nro_expediente == nro_expediente)
+            except DoesNotExist as e:
+                print("Error al ingresar dato nulo en el ingreso para el expediente")
+                continue
+            destacada = input("Que tan destacada es la Obra?: ")
+            mano_obra = int(input("Cantidad de mano de Obra?: "))
+            porcentaje_avance = int(input("Ingrese el porcentaje que va la obra: "))
+
+            nueva_obra = Obra(etapas, tipoObra, areaResponsable, barrio, empresa, nro_expediente, destacada, mano_obra)
+            nueva_obra.nuevo_proyecto()
+
+            opcion += 1
         #• Este método debe retornar la nueva instancia de obra.
 
     #def obtener_indicadores():
@@ -101,8 +145,7 @@ class GestionarObra(ABC):
 
 prueba1 = GestionarObra()
 prueba1.limpiar_datos()
-print(prueba1)
 prueba1.conectar_db
-print(prueba1)
+prueba1.mapear_orm()
 prueba1.cargar_datos()
-print(prueba1)
+#prueba1.nueva_obra()
